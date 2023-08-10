@@ -1,17 +1,24 @@
 import cv2
-import numpy as np
+import mediapipe as mp
+
+#drawing lines between the landmarks
+mp_draw = mp.solutions.drawing_utils
+mp_draw_styles = mp.solutions.drawing_styles
+
+
+mp_hands = mp.solutions.hands
 
 #Open camera feed
 capture = cv2.VideoCapture(0)
 
-#Create a background detector(#of previous frames to make background model, #how much pixel change to say it is a valid change, detect shadows)
-fgbg = cv2.createBackgroundSubtractorMOG2(300, 400, True)
+hands = mp_hands.Hands()
+
 frameCount = 0
 
 #print(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
 #print(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-#If camera feed is mot opened
+#If camera feed is mot opened 
 if not capture.isOpened():
     print("Cannot open camera")
 while(1):
@@ -26,21 +33,16 @@ while(1):
     #count frames
     frameCount += 1
 
-    #Get foreground mask
-    fgmask = fgbg.apply(frame)
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
 
-    #Count all non zero pixals within the mask
-    count = np.count_nonzero(fgmask)
+    results = hands.process(frame)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-    print('Frame : %d, Pixel Count: %d' % (frameCount, count))
-
-    #If it is not the first frame and if the changed pixels count is greater than 1000 count it as a hand in the frame
-    if(frameCount > 1 and count > 1000):
-        cv2.putText(frame, 'I SEE THE HAND', (500, 500), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-        
     cv2.imshow('Frame', frame)
-    cv2.imshow('Mask', fgmask)
-
     #If 'q' key is pressed, break out of the loop
     if cv2.waitKey(1) == ord('q'):
         break
